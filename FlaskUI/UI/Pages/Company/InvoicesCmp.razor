@@ -1,0 +1,147 @@
+﻿@page "/companies"
+@inject HttpClient Http
+
+<h3>InvoicesCmp</h3>
+
+<DxGrid Data="invoiceMasters" ShowGroupPanel=true ShowFilterRow=true
+        GroupFooterDisplayMode="GridGroupFooterDisplayMode.IfExpanded">
+
+    <Columns>
+        <DxGridDataColumn FieldName="id" Caption="ID"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="customer_name" Caption="Customer Name"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="customer_bank_account_number" Caption="Customer Bank Account"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="customer_id" Caption="Customer ID"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="customer_tax_administration" Caption="Customer Tax Admns"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="date_time" Caption="Date" DisplayFormat="D"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="price" Caption="Price"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="string_price" Caption="String Price"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="vat" Caption="VAT"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="total_price" Caption="Total"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="office_id" Caption="Office Name">
+            <CellDisplayTemplate>
+                <p style="text-align:center;">@offices.Where(x=>x.id == (int)context.Value).FirstOrDefault().name</p>
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn FieldName="id" Caption="Details" AllowSort="false">
+            <CellDisplayTemplate>
+                <DxButton CssClass="popup-button my-1 ms-2" RenderStyle="ButtonRenderStyle.Primary"
+                          Text="Details"
+                          Click="@(() => ShowDetails(context))">
+                </DxButton>
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+    </Columns>
+</DxGrid>
+
+<DxPopup @bind-Visible="@popupVisible"
+         HeaderText="Invoice Details"
+         HorizontalAlignment="HorizontalAlignment.Center"
+         VerticalAlignment="VerticalAlignment.Center"
+         ShowFooter="true">
+        <BodyContentTemplate>
+            <DxGrid Data="details">
+                <Columns>
+                <DxGridDataColumn FieldName="invoice_master_id" Caption="Invoice Master Id"></DxGridDataColumn>
+                <DxGridDataColumn FieldName="productName" Caption="Product Name"></DxGridDataColumn>
+                <DxGridDataColumn FieldName="amount" Caption="Amount"></DxGridDataColumn>
+                <DxGridDataColumn FieldName="pieces" Caption="Pieces"></DxGridDataColumn>
+                <DxGridDataColumn FieldName="price" Caption="Price"></DxGridDataColumn>
+                </Columns>
+            </DxGrid>
+        </BodyContentTemplate>
+        
+        <FooterContentTemplate>
+        <DxButton CssClass="popup-button my-1 ms-2" RenderStyle="ButtonRenderStyle.Primary" 
+            Text="Close" 
+            Click="@(()=>popupVisible=false)">
+        </DxButton>
+        </FooterContentTemplate>
+</DxPopup>
+
+@code {
+    public IGrid? MyGrid { get; set; }
+    List<InvoiceMaster> invoiceMasters = new List<InvoiceMaster>();
+    List<Office> offices = new List<Office>();
+    List<Customer> customers = new List<Customer>();
+    List<InvoiceDetail> details = new List<InvoiceDetail>();
+    public bool popupVisible = false;
+
+    public async void ShowDetails(GridDataColumnCellDisplayTemplateContext context)
+    {
+        int invoiceMasterId = (int)context.Value;
+        details = await Http.GetFromJsonAsync<List<InvoiceDetail>>($"http://127.0.0.1:5000/api/invoicedetails/{invoiceMasterId}");
+        popupVisible = true;
+    }
+
+    /*public async void SaveInvoiceMaster(GridEditModelSavingEventArgs e)
+    {
+        var editModel = (InvoiceMaster)e.EditModel;
+        var dataItem = e.IsNew ? new InvoiceMaster() : (InvoiceMaster)e.DataItem;
+
+        dataItem.customer_name = editModel.customer_name;
+        dataItem.customer_bank_account_number = editModel.customer_bank_account_number;
+        dataItem.customer_tax_administration = editModel.customer_tax_administration;
+        dataItem.price = editModel.price;
+        dataItem.vat = editModel.vat;
+        dataItem.total_price = editModel.total_price;
+        dataItem.string_price = editModel.string_price;
+        dataItem.office_id = editModel.office_id;
+
+        if (!e.IsNew)
+        {
+            await Http.PutAsJsonAsync<InvoiceMaster>($"http://127.0.0.1:5000/api/invoicemasters/{dataItem.id}", dataItem);
+        }
+
+        if (e.IsNew)
+        {
+            invoiceMasters?.Add(dataItem);
+            await Http.PostAsJsonAsync<InvoiceMaster>("http://127.0.0.1:5000/api/invoicemasters/", dataItem);
+        }
+    }
+
+    public void RemoveInvoiceMaster(GridDataItemDeletingEventArgs e)
+    {
+        var data = (InvoiceMaster)e.DataItem;
+        Http.DeleteAsync($"http://127.0.0.1:5000/api/invoicemasters/{data.id}");
+        invoiceMasters?.Remove(data);
+    }*/
+
+    protected override async Task OnInitializedAsync()
+    {
+        offices = await Http.GetFromJsonAsync<List<Office>>("http://127.0.0.1:5000/api/offices/");
+        customers = await Http.GetFromJsonAsync<List<Customer>>("http://127.0.0.1:5000/api/customers/");
+        invoiceMasters = await Http.GetFromJsonAsync<List<InvoiceMaster>>("http://127.0.0.1:5000/api/invoicemasters/");
+    }
+
+    /*<EditFormTemplate Context="EditFormContext">
+        @{
+            var invoiceMaster = (InvoiceMaster)EditFormContext.EditModel;
+        }
+        <DxFormLayout>
+            <DxFormLayoutItem Caption="Customer Name">
+                <DxTextBox @bind-Text=@invoiceMaster.customer_name/>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Customer Bank Account">
+                <DxTextBox @bind-Text=@invoiceMaster.customer_bank_account_number/>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Customer Tax Admns">
+                <DxTextBox @bind-Text=@invoiceMaster.customer_tax_administration/>
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Price">
+                <DxSpinEdit @bind-Value=@invoiceMaster.price />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="VAT">
+                <DxSpinEdit @bind-Value=@invoiceMaster.vat />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Total">
+                <DxSpinEdit @bind-Value=@invoiceMaster.total_price />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="String Price">
+                <DxTextBox @bind-Text=@invoiceMaster.string_price />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Office ID">
+                <DxSpinEdit @bind-Value=@invoiceMaster.office_id />
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </EditFormTemplate>*/
+}

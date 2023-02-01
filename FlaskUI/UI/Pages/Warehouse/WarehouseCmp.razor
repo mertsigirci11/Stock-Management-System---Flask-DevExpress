@@ -1,0 +1,78 @@
+﻿@page "/warehouse"
+@inject HttpClient Http
+
+<h3>Warehouse</h3>
+
+<DxGrid Data="warehouses" ShowGroupPanel=true ShowFilterRow=true
+    EditModelSaving="@SaveWarehouse" DataItemDeleting="@RemoveWarehouse" @ref="MyGrid"
+        GroupFooterDisplayMode="GridGroupFooterDisplayMode.IfExpanded">
+
+    <Columns>
+        <DxGridCommandColumn Width="150px"/>
+        <DxGridDataColumn FieldName="id" Caption="ID"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="company_id" Caption="Company Name">
+            <CellDisplayTemplate>
+                <p style="text-align:center;">@companies.Where(x=>x.id == (int)context.Value).FirstOrDefault().name</p>
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+        <DxGridDataColumn FieldName="name" Caption="Name"></DxGridDataColumn>
+    </Columns>
+
+    <EditFormTemplate Context="EditFormContext">
+        @{
+            var warehouse = (Warehouse)EditFormContext.EditModel;
+        }
+        <DxFormLayout>
+            <DxFormLayoutItem Caption="Company">
+                <DxComboBox Data="companies"
+                            TextFieldName="@nameof(Company.name)"
+                            ValueFieldName="id"
+                            @bind-Value=@warehouse.company_id/>
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="Name">
+                <DxTextBox @bind-Text=@warehouse.name />
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </EditFormTemplate>
+</DxGrid>
+
+@code {
+    public IGrid? MyGrid { get; set; }
+    List<Warehouse> warehouses = new List<Warehouse>();
+    List<Company> companies = new List<Company>();
+    
+
+    public async void SaveWarehouse(GridEditModelSavingEventArgs e)
+    {
+        var editModel = (Warehouse)e.EditModel;
+        var dataItem = e.IsNew ? new Warehouse() : (Warehouse)e.DataItem;
+
+        dataItem.id = editModel.id;
+        dataItem.company_id = editModel.company_id;
+        dataItem.name = editModel.name;
+        if(!e.IsNew)
+        {
+            await Http.PutAsJsonAsync<Warehouse>($"http://127.0.0.1:5000/api/warehouses/{dataItem.id}", dataItem);
+        }
+
+        if (e.IsNew)
+        {
+            warehouses?.Add(dataItem);
+            await Http.PostAsJsonAsync<Warehouse>("http://127.0.0.1:5000/api/warehouses/", dataItem);
+        }
+    }
+
+    public void RemoveWarehouse(GridDataItemDeletingEventArgs e)
+    {
+        var data = (Warehouse)e.DataItem;
+        Http.DeleteAsync($"http://127.0.0.1:5000/api/warehouses/{data.id}");
+        warehouses?.Remove(data);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        warehouses = await Http.GetFromJsonAsync<List<Warehouse>>("http://127.0.0.1:5000/api/warehouses/");
+        companies = await Http.GetFromJsonAsync<List<Company>>("http://127.0.0.1:5000/api/companies/");
+    }
+}

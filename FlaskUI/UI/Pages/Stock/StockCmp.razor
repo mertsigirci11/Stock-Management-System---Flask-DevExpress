@@ -1,0 +1,85 @@
+﻿@page "/stock"
+@inject HttpClient Http
+
+<h3>Stock</h3>
+
+<DxGrid Data="stocks" ShowGroupPanel=true ShowFilterRow=true
+        EditModelSaving="@SaveStock" DataItemDeleting="@RemoveStock" @ref="MyGrid"
+        GroupFooterDisplayMode="GridGroupFooterDisplayMode.IfExpanded">
+
+    <Columns>
+        <DxGridCommandColumn Width="150px" />
+        <DxGridDataColumn FieldName="id" Caption="ID"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="name" Caption="Name"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="piece" Caption="Piece"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="price" Caption="Price"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="warehouse_id" Caption="Warehouse Name">
+            <CellDisplayTemplate>
+                <p style="text-align:center;">@warehouses.Where(x=>x.id == (int)context.Value).FirstOrDefault().name</p>
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+    </Columns>
+
+    <EditFormTemplate Context="EditFormContext">
+        @{
+            var stock = (Stock)EditFormContext.EditModel;
+        }
+        <DxFormLayout>
+            <DxFormLayoutItem Caption="Name">
+                <DxTextBox @bind-Text=@stock.name />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Piece">
+                <DxSpinEdit @bind-Value=@stock.piece />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Price">
+                <DxSpinEdit @bind-Value=@stock.price />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Warehouse">
+                <DxComboBox Data="warehouses"
+                            TextFieldName="@nameof(Warehouse.name)"
+                            ValueFieldName="id"
+                            @bind-Value=@stock.warehouse_id />
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </EditFormTemplate>
+</DxGrid>
+@code {
+    public IGrid? MyGrid { get; set; }
+    List<Warehouse> warehouses = new List<Warehouse>();
+    List<Stock> stocks = new List<Stock>();
+    Warehouse warehouse1 = new Warehouse();
+
+    public async void SaveStock(GridEditModelSavingEventArgs e)
+    {
+        var editModel = (Stock)e.EditModel;
+        var dataItem = e.IsNew ? new Stock() : (Stock)e.DataItem;
+
+        dataItem.name = editModel.name;
+        dataItem.piece = editModel.piece;
+        dataItem.price = editModel.price;
+        dataItem.warehouse_id = editModel.warehouse_id;
+        if (!e.IsNew)
+        {
+            await Http.PutAsJsonAsync<Stock>($"http://127.0.0.1:5000/api/stocks/{dataItem.id}", dataItem);
+        }
+
+        if (e.IsNew)
+        {
+            stocks?.Add(dataItem);
+            await Http.PostAsJsonAsync<Stock>("http://127.0.0.1:5000/api/stocks/", dataItem);
+        }
+    }
+
+    public void RemoveStock(GridDataItemDeletingEventArgs e)
+    {
+        var data = (Stock)e.DataItem;
+        Http.DeleteAsync($"http://127.0.0.1:5000/api/stocks/{data.id}");
+        stocks?.Remove(data);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        warehouses = await Http.GetFromJsonAsync<List<Warehouse>>("http://127.0.0.1:5000/api/warehouses/");
+        stocks = await Http.GetFromJsonAsync<List<Stock>>("http://127.0.0.1:5000/api/stocks/");
+    }
+}

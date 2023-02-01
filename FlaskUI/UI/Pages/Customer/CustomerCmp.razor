@@ -1,0 +1,86 @@
+﻿@page "/customers"
+@inject HttpClient Http
+
+<h3>CustomerCmp</h3>
+
+<DxGrid Data="customers" ShowGroupPanel=true ShowFilterRow=true
+        EditModelSaving="@SaveCustomer" DataItemDeleting="@RemoveCustomer" @ref="MyGrid"
+        GroupFooterDisplayMode="GridGroupFooterDisplayMode.IfExpanded">
+
+    <Columns>
+        <DxGridCommandColumn Width="150px" />
+        <DxGridDataColumn FieldName="id" Caption="ID"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="name" Caption="Customer Name"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="surname" Caption="Surname"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="username" Caption="Username"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="password" Caption="Password"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="tax_administration" Caption="Tax Admns"></DxGridDataColumn>
+    </Columns>
+
+    <EditFormTemplate Context="EditFormContext">
+        @{
+            var customer = (Customer)EditFormContext.EditModel;
+        }
+        <DxFormLayout>
+            <DxFormLayoutItem Caption="Name">
+                <DxTextBox @bind-Text=@customer.name />
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="Surname">
+                <DxTextBox @bind-Text=@customer.surname />
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="Username">
+                <DxTextBox @bind-Text=@customer.username />
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="Password">
+                <DxTextBox @bind-Text=@customer.password />
+            </DxFormLayoutItem>
+
+            <DxFormLayoutItem Caption="Tax Admns">
+                <DxTextBox @bind-Text=@customer.tax_administration />
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </EditFormTemplate>
+</DxGrid>
+
+@code {
+    public IGrid? MyGrid { get; set; }
+    List<Customer> customers = new List<Customer>();
+
+    public async void SaveCustomer(GridEditModelSavingEventArgs e)
+    {
+        var editModel = (Customer)e.EditModel;
+        var dataItem = e.IsNew ? new Customer() : (Customer)e.DataItem;
+
+        dataItem.name = editModel.name;
+        dataItem.surname = editModel.surname;
+        dataItem.username = editModel.username;
+        dataItem.password = editModel.password;
+        dataItem.tax_administration = editModel.tax_administration;
+        
+        if (!e.IsNew)
+        {
+            await Http.PutAsJsonAsync<Customer>($"http://127.0.0.1:5000/api/customers/{dataItem.id}", dataItem);
+        }
+
+        if (e.IsNew)
+        {
+            customers?.Add(dataItem);
+            await Http.PostAsJsonAsync<Customer>("http://127.0.0.1:5000/api/customers/", dataItem);
+        }
+    }
+
+    public void RemoveCustomer(GridDataItemDeletingEventArgs e)
+    {
+        var data = (Customer)e.DataItem;
+        Http.DeleteAsync($"http://127.0.0.1:5000/api/customers/{data.id}");
+        customers?.Remove(data);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        customers = await Http.GetFromJsonAsync<List<Customer>>("http://127.0.0.1:5000/api/customers/");
+    }
+}

@@ -1,0 +1,82 @@
+﻿@page "/office"
+@inject HttpClient Http
+
+<h3>OfficeCmp</h3>
+
+<DxGrid Data="offices" ShowGroupPanel=true ShowFilterRow=true
+        EditModelSaving="@SaveOffice" DataItemDeleting="@RemoveOffice" @ref="MyGrid"
+        GroupFooterDisplayMode="GridGroupFooterDisplayMode.IfExpanded">
+
+    <Columns>
+        <DxGridCommandColumn Width="150px" />
+        <DxGridDataColumn FieldName="id" Caption="ID"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="name" Caption="Name"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="address" Caption="Address"></DxGridDataColumn>
+        <DxGridDataColumn FieldName="company_id" Caption="Company Name">
+            <CellDisplayTemplate>
+                <p style="text-align:center;">@companies.Where(x=>x.id == (int)context.Value).FirstOrDefault().name</p>
+            </CellDisplayTemplate>
+        </DxGridDataColumn>
+    </Columns>
+
+    <EditFormTemplate Context="EditFormContext">
+        @{
+            var office = (Office)EditFormContext.EditModel;
+        }
+        <DxFormLayout>
+            <DxFormLayoutItem Caption="Address">
+                <DxTextBox @bind-Text=@office.address />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Company">
+                <DxComboBox Data="companies"
+                            TextFieldName="@nameof(Company.name)"
+                            ValueFieldName="id"
+                            @bind-Value=@office.company_id />
+            </DxFormLayoutItem>
+            <DxFormLayoutItem Caption="Name">
+                <DxTextBox @bind-Text=@office.name />
+            </DxFormLayoutItem>
+        </DxFormLayout>
+    </EditFormTemplate>
+</DxGrid>
+
+@code {
+    public IGrid? MyGrid { get; set; }
+    List<Company> companies = new List<Company>();
+    List<Office> offices = new List<Office>();
+    Company company1 = new Company();
+
+    public async void SaveOffice(GridEditModelSavingEventArgs e)
+    {
+        var editModel = (Office)e.EditModel;
+        var dataItem = e.IsNew ? new Office() : (Office)e.DataItem;
+
+        dataItem.address = editModel.address;
+        dataItem.company_id = editModel.company_id;
+        dataItem.name = editModel.name;
+
+        if (!e.IsNew)
+        {
+            await Http.PutAsJsonAsync<Office>($"http://127.0.0.1:5000/api/offices/{dataItem.id}", dataItem);
+        }
+
+        if (e.IsNew)
+        {
+            offices?.Add(dataItem);
+            await Http.PostAsJsonAsync<Office>("http://127.0.0.1:5000/api/offices/", dataItem);
+        }
+    }
+
+    public void RemoveOffice(GridDataItemDeletingEventArgs e)
+    {
+        var data = (Office)e.DataItem;
+        Http.DeleteAsync($"http://127.0.0.1:5000/api/offices/{data.id}");
+        offices?.Remove(data);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        offices = await Http.GetFromJsonAsync<List<Office>>("http://127.0.0.1:5000/api/offices/");
+        companies = await Http.GetFromJsonAsync<List<Company>>("http://127.0.0.1:5000/api/companies/");
+    }
+}
